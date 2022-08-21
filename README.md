@@ -19,5 +19,4 @@
 구분 : 기업사용자, ID : ENTERPRISE, PW : rhdxhd12 (영문으로 공통12)
 구분 : 업무사용자, ID : TEST1, PW : rhdxhd12 (영문으로 공통12)
 구분 : 업무사용자, ID : webmaster, PW : rhdxhd12 (영문으로 공통12)
- 
- 
+
