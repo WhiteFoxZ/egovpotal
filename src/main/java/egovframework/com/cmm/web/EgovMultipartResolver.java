@@ -112,8 +112,8 @@ public class EgovMultipartResolver extends CommonsMultipartResolver {
 					if (multipartFiles.put(fileItem.getName(), fileList) != null) {
 						throw new MultipartException("Multiple files for field name [" + file.getName() + "] found - not supported by MultipartResolver");
 					}
-					LOGGER.debug("Found multipart file [{}] of size {} bytes with original filename [{}], stored {}",
-							file.getName(), file.getSize(), file.getOriginalFilename(),	file.getStorageDescription());
+					LOGGER.debug("Found multipart file [" + file.getName() + "] of size " + file.getSize() + " bytes with original filename [" + file.getOriginalFilename()
+					+ "], stored " + file.getStorageDescription());
 				}
 
 			}

@@ -1,5 +1,7 @@
 package egovframework.let.sym.ccm.zip.web;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -15,6 +17,8 @@ import egovframework.rte.ptl.mvc.tags.ui.pagination.PaginationInfo;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -47,6 +51,8 @@ import org.springmodules.validation.commons.DefaultBeanValidator;
  */
 @Controller
 public class EgovCcmZipManageController {
+	private static final Logger LOGGER = LoggerFactory.getLogger(EgovCcmZipManageController.class);
+
 	@Resource(name = "ZipManageService")
     private EgovCcmZipManageService zipManageService;
 
@@ -63,26 +69,23 @@ public class EgovCcmZipManageController {
 	 * @return "/cmm/sym/zip/EgovCcmZipSearchPopup"
 	 * @throws Exception
 	 */
-	@RequestMapping(value="/sym/cmm/EgovCcmZipSearchPopup.do")
- 	public String callNormalCalPopup (ModelMap model
- 			) throws Exception {
+	@RequestMapping(value = "/sym/cmm/EgovCcmZipSearchPopup.do")
+	public String callNormalCalPopup(ModelMap model) throws Exception {
 		return "/cmm/sym/zip/EgovCcmZipSearchPopup";
-	}    
-    
-    /**
+	}
+
+	/**
 	 * 우편번호 찾기 목록을 조회한다.
-     * @param searchVO
-     * @param model
-     * @return "/cmm/sym/zip/EgovCcmZipSearchList"
-     * @throws Exception
-     */
-    @RequestMapping(value="/sym/cmm/EgovCcmZipSearchList.do")
-	public String selectZipSearchList (@ModelAttribute("searchVO") ZipVO searchVO
-			, ModelMap model
-			) throws Exception {
-    	/** EgovPropertyService.sample */
-    	searchVO.setPageUnit(propertiesService.getInt("pageUnit"));
-    	searchVO.setPageSize(propertiesService.getInt("pageSize"));
+	 * @param searchVO
+	 * @param model
+	 * @return "/cmm/sym/zip/EgovCcmZipSearchList"
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "/sym/cmm/EgovCcmZipSearchList.do")
+	public String selectZipSearchList(@ModelAttribute("searchVO") ZipVO searchVO, ModelMap model) throws Exception {
+		/** EgovPropertyService.sample */
+		searchVO.setPageUnit(propertiesService.getInt("pageUnit"));
+		searchVO.setPageSize(propertiesService.getInt("pageSize"));
 
     	/** pageing */
     	PaginationInfo paginationInfo = new PaginationInfo();
@@ -111,13 +114,10 @@ public class EgovCcmZipManageController {
 	 * @return "forward:/sym/ccm/zip/EgovCcmZipList.do"
 	 * @throws Exception
 	 */
-    @RequestMapping(value="/sym/ccm/zip/EgovCcmZipRemove.do")
-	public String deleteZip (@ModelAttribute("loginVO") LoginVO loginVO
-			, Zip zip
-			, ModelMap model
-			) throws Exception {
-    	zipManageService.deleteZip(zip);
-        return "forward:/sym/ccm/zip/EgovCcmZipList.do";
+	@RequestMapping(value = "/sym/ccm/zip/EgovCcmZipRemove.do")
+	public String deleteZip(@ModelAttribute("loginVO") LoginVO loginVO, Zip zip, ModelMap model) throws Exception {
+		zipManageService.deleteZip(zip);
+		return "forward:/sym/ccm/zip/EgovCcmZipList.do";
 	}
 
 	/**
@@ -129,14 +129,9 @@ public class EgovCcmZipManageController {
 	 * @return "/cmm/sym/zip/EgovCcmZipRegist"
 	 * @throws Exception
 	 */
-    @RequestMapping(value="/sym/ccm/zip/EgovCcmZipRegist.do")
-	public String insertZip (@ModelAttribute("loginVO") LoginVO loginVO
-			, @ModelAttribute("zip") Zip zip
-			, BindingResult bindingResult
-			, ModelMap model
-			) throws Exception {
-    	if   (zip.getZip() == null
-    		||zip.getZip().equals("")) {
+	@RequestMapping(value = "/sym/ccm/zip/EgovCcmZipRegist.do")
+	public String insertZip(@ModelAttribute("loginVO") LoginVO loginVO, @ModelAttribute("zip") Zip zip, BindingResult bindingResult, ModelMap model) throws Exception {
+		if (zip.getZip() == null || zip.getZip().equals("")) {
 
             return "/cmm/sym/zip/EgovCcmZipRegist";
     	}
@@ -161,10 +156,8 @@ public class EgovCcmZipManageController {
 	 * @throws Exception
 	 */
 	@RequestMapping(value = "/sym/ccm/zip/EgovCcmExcelZipRegist.do")
-	public String insertExcelZip(@ModelAttribute("loginVO") LoginVO loginVO
-			, final HttpServletRequest request
-			, @RequestParam Map <String, Object> commandMap
-			, Model model) throws Exception {
+	public String insertExcelZip(@ModelAttribute("loginVO") LoginVO loginVO, final HttpServletRequest request, @RequestParam Map<String, Object> commandMap, Model model)
+			throws Exception {
 
 		String sCmd = commandMap.get("cmd") == null ? "" : (String)commandMap.get("cmd");
     	if (sCmd.equals("")) {
@@ -175,20 +168,39 @@ public class EgovCcmZipManageController {
 		final Map<String, MultipartFile> files = multiRequest.getFileMap();
 
 		Iterator<Entry<String, MultipartFile>> itr = files.entrySet().iterator();
-		MultipartFile file;
-
+		MultipartFile file = null;
+		InputStream fis = null;
 		while (itr.hasNext()) {
 			Entry<String, MultipartFile> entry = itr.next();
-		
-			file = entry.getValue();
-			if (!"".equals(file.getOriginalFilename())) {
-		    	//zipManageService.deleteAllZip();
-				//excelZipService.uploadExcel("ZipManageDAO.insertExcelZip", file.getInputStream(), 2);
-				zipManageService.insertExcelZip(file.getInputStream());
+			try {
+
+				file = entry.getValue();
+				fis = file.getInputStream();
+				if (!"".equals(file.getOriginalFilename())) {
+					// 2011.10.07 업로드 파일에 대한 확장자를 체크
+					if (file.getOriginalFilename().toLowerCase().endsWith(".xls") || file.getOriginalFilename().toLowerCase().endsWith(".xlsx")) {
+
+						//zipManageService.deleteAllZip();
+						//excelZipService.uploadExcel("ZipManageDAO.insertExcelZip", file.getInputStream(), 2);
+						zipManageService.insertExcelZip(fis);
+
+					} else {
+						//log.info("xls, xlsx 파일 타입만 등록이 가능합니다.");
+						return "egovframework/com/sym/ccm/zip/EgovCcmExcelZipRegist";
+					}
+					// *********** 끝 ***********
+				}
+
+			} finally {
+				try {
+					if (fis != null) {
+						fis.close();
+					}
+				} catch (IOException ee) {
+					LOGGER.debug("{}", ee);
+				}
 			}
-			if(file.getInputStream()!=null){
-				file.getInputStream().close();
-	        }
+
 		}
         
         return "forward:/sym/ccm/zip/EgovCcmZipList.do";
@@ -202,12 +214,9 @@ public class EgovCcmZipManageController {
 	 * @return "/cmm/sym/zip/EgovCcmZipDetail"
 	 * @throws Exception
 	 */
-	@RequestMapping(value="/sym/ccm/zip/EgovCcmZipDetail.do")
- 	public String selectZipDetail (@ModelAttribute("loginVO") LoginVO loginVO
- 			, Zip zip
- 			, ModelMap model
- 			) throws Exception {
-    	Zip vo = zipManageService.selectZipDetail(zip);
+	@RequestMapping(value = "/sym/ccm/zip/EgovCcmZipDetail.do")
+	public String selectZipDetail(@ModelAttribute("loginVO") LoginVO loginVO, Zip zip, ModelMap model) throws Exception {
+		Zip vo = zipManageService.selectZipDetail(zip);
 		model.addAttribute("result", vo);
 		
 		return "/cmm/sym/zip/EgovCcmZipDetail";
@@ -215,20 +224,17 @@ public class EgovCcmZipManageController {
 
     /**
 	 * 우편번호 목록을 조회한다.
-     * @param loginVO
-     * @param searchVO
-     * @param model
-     * @return "/cmm/sym/zip/EgovCcmZipList"
-     * @throws Exception
-     */
-    @RequestMapping(value="/sym/ccm/zip/EgovCcmZipList.do")
-	public String selectZipList (@ModelAttribute("loginVO") LoginVO loginVO
-			, @ModelAttribute("searchVO") ZipVO searchVO
-			, ModelMap model
-			) throws Exception {
-    	/** EgovPropertyService.sample */
-    	searchVO.setPageUnit(propertiesService.getInt("pageUnit"));
-    	searchVO.setPageSize(propertiesService.getInt("pageSize"));
+	 * @param loginVO
+	 * @param searchVO
+	 * @param model
+	 * @return "/cmm/sym/zip/EgovCcmZipList"
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "/sym/ccm/zip/EgovCcmZipList.do")
+	public String selectZipList(@ModelAttribute("loginVO") LoginVO loginVO, @ModelAttribute("searchVO") ZipVO searchVO, ModelMap model) throws Exception {
+		/** EgovPropertyService.sample */
+		searchVO.setPageUnit(propertiesService.getInt("pageUnit"));
+		searchVO.setPageSize(propertiesService.getInt("pageSize"));
 
     	/** pageing */
     	PaginationInfo paginationInfo = new PaginationInfo();
@@ -259,17 +265,13 @@ public class EgovCcmZipManageController {
 	 * @return "/cmm/sym/zip/EgovCcmZipModify"
 	 * @throws Exception
 	 */
-    @RequestMapping(value="/sym/ccm/zip/EgovCcmZipModify.do")
-	public String updateZip (@ModelAttribute("loginVO") LoginVO loginVO
-			, @ModelAttribute("zip") Zip zip
-			, BindingResult bindingResult
-			, @RequestParam Map <String, Object> commandMap
-			, ModelMap model
-			) throws Exception {
-		String sCmd = commandMap.get("cmd") == null ? "" : (String)commandMap.get("cmd");
-    	if (sCmd.equals("")) {
-    		Zip vo = zipManageService.selectZipDetail(zip);
-    		model.addAttribute("zip", vo);
+	@RequestMapping(value = "/sym/ccm/zip/EgovCcmZipModify.do")
+	public String updateZip(@ModelAttribute("loginVO") LoginVO loginVO, @ModelAttribute("zip") Zip zip, BindingResult bindingResult, @RequestParam Map<String, Object> commandMap,
+			ModelMap model) throws Exception {
+		String sCmd = commandMap.get("cmd") == null ? "" : (String) commandMap.get("cmd");
+		if (sCmd.equals("")) {
+			Zip vo = zipManageService.selectZipDetail(zip);
+			model.addAttribute("zip", vo);
 
     		return "/cmm/sym/zip/EgovCcmZipModify";
     	} else if (sCmd.equals("Modify")) {
